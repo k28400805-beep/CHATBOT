@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yapay Zeka Asistanım</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 600px;
+            height: 80vh;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: #0078ff;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        .user-message {
+            background: #0078ff;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+
+        .ai-message {
+            background: #e4e6eb;
+            color: #050505;
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+
+        .chat-input-area {
+            display: flex;
+            padding: 15px;
+            background: #fff;
+            border-top: 1px solid #e4e6eb;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ccd0d5;
+            border-radius: 20px;
+            outline: none;
+            font-size: 1rem;
+        }
+
+        button {
+            background: #0078ff;
+            color: white;
+            border: none;
+            padding: 0 20px;
+            margin-left: 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #0066da;
+        }
+
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">🤖 Yapay Zeka Asistanı</div>
+    <div class="chat-messages" id="chatMessages">
+        <div class="message ai-message">Merhaba! Ben GitHub sitendeki yapay zekayım. Sana nasıl yardımcı olabilirim?</div>
+    </div>
+    <div class="chat-input-area">
+        <input type="text" id="userInput" placeholder="Bir şeyler yazın..." onkeypress="handleKeyPress(event)">
+        <button id="sendBtn" onclick="sendMessage()">Gönder</button>
+    </div>
+</div>
+
+<script>
+    // NOT: Güvenlik nedeniyle API anahtarınızı herkesin görebileceği açık repolarda 
+    // paylaşmamanız önerilir. Test için buraya yazabilirsiniz.
+    const API_KEY = "BURAYA_KENDI_API_ANAHTARINI_YAZ"; 
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+
+    const chatMessages = document.getElementById('chatMessages');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    function appendMessage(text, isUser) {
+        const msgDiv = document.createElement('div');
+        msgDiv.classList.add('message');
+        msgDiv.classList.add(isUser ? 'user-message' : 'ai-message');
+        msgDiv.innerText = text;
+        chatMessages.appendChild(msgDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight; // Otomatik aşağı kaydır
+    }
+
+    async function sendMessage() {
+        const text = userInput.value.trim();
+        if (!text) return;
+
+        // Kullanıcı mesajını ekrana yaz
+        appendMessage(text, true);
+        userInput.value = '';
+        
+        // Butonu ve girişi geçici olarak devre dışı bırak
+        userInput.disabled = true;
+        sendBtn.disabled = true;
+
+        try {
+            // Gemini API'sine istek atıyoruz
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{ text: text }]
+                    }]
+                })
+            });
+
+            const data = await response.json();
+            
+            if (data.candidates && data.candidates[0].content.parts[0].text) {
+                const aiResponse = data.candidates[0].content.parts[0].text;
+                appendMessage(aiResponse, false);
+            } else {
+                appendMessage("Bir hata oluştu veya yanıt alınamadı.", false);
+            }
+
+        } catch (error) {
+            console.error("Hata:", error);
+            appendMessage("Bağlantı hatası! Lütfen API anahtarınızı kontrol edin.", false);
+        } finally {
+            // Girişleri tekrar aktif et
+            userInput.disabled = false;
+            sendBtn.disabled = false;
+            userInput.focus();
+        }
+    }
+
+    function handleKeyPress(event) {
+        if (event.key === 'Enter') {
+            sendMessage();
+        }
+    }
+</script>
+
+</body>
+</html>
